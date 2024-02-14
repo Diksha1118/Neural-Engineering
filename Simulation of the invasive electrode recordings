@@ -1,1 +1,185 @@
+%ques1
+%%distance of origin of cube from neuron 1 comp
+origin=[0,0,0];
+neuron1=[XYZ(:,1),XYZ(:,2),XYZ(:,3)];
+num_neurons=10;
+hilloc_pos=neuron1(200,:);
+neurons = zeros(size(neuron1, 1), 3, num_neurons);
+neurons(:,:,1) = neuron1;
+relative_positions = neuron1 - hilloc_pos;
+% Cube boundaries for the axon hillocks
+cube_min = -50;
+cube_max = 50;
+hillock_positions = zeros(num_neurons, 3); % 10 neurons, 3 coordinates (x, y, z)
+hillock_positions(1, :) = hilloc_pos;
+%%randon hilloc pos and other coordinates
+for i = 2:num_neurons
+    % Random position for the axon hillock within the cube
+    random_hillock_position = cube_min + (cube_max - cube_min) .* rand(1, 3);
+    hillock_positions(i, :) = random_hillock_position;
+    neurons(:,:,i) = relative_positions + random_hillock_position;
+end
+% Plotting each neuron
+figure; hold on; % Create a figure and hold it for multiple plots
+% Plotting each neuron and highlighting axon hillocks
+for i = 1:10 % Assuming 10 neurons
+    neuron_positions = neurons(:,:,i); % Extract the ith neuron's positions
+    plot3(neuron_positions(:,1), neuron_positions(:,2), neuron_positions(:,3), '.-'); % Plot neuron compartments
+    % Highlighting the axon hillock for this neuron
+    scatter3(hillock_positions(i,1), hillock_positions(i,2), hillock_positions(i,3), 100, 'filled', 'MarkerEdgeColor', 'k', 'MarkerFaceColor', [0 .75 .75]);
+    
+end
+scatter3(0, 0, 0, 150, 'MarkerFaceColor', 'r');
+xlabel('X (\mu m)');
+ylabel('Y (\mu m)');
+zlabel('Z (\mu m)');
+title('Neurons with Highlighted Axon Hillocks and Origin');
+axis equal; grid on; % Equal aspect ratio and grid on
+xlim([-50 50]); ylim([-50 50]); zlim([-50 50]); %cube boundaries
+view(3); % 3D view
+hold off; 
+
+%%distances from origin of cube:
+distances = zeros(10, 531);
+neurons_keep = false(num_neurons, 1); % Initialize as logical array
+for i = 1:10
+    % Extracting the positions for the i-th neuron (531x3)
+    neuron_positions = neurons(:,:,i);
+    % Calculating the distances for all compartments of the i-th neuron
+    distances_i = sqrt(sum((origin-neuron_positions).^2, 2));
+    distances(i,:) = distances_i';
+     if distances_i > 25
+        neurons_keep(i) = true;
+    end
+end
+
+%%%%ques2
+%RANDOM SPIKE TIMES
+simulation_duration = 1; % Duration in ms
+dt=2.5*10^-5;%0.025ms=>s
+spike_duration_ms = 2*10^-4 ;%0.18ms>s;
+refractory_period = 0.001; % 1 ms => s, example refractory period
+neuron_spike_times = cell(num_neurons, 1); % Cell array to store spike times for each neuron
+
+for i = 1:num_neurons
+    % Randomly pick the number of spikes for the i-th neuron
+    num_spikes = randi([2, 50]);    
+    % Calculating the total duration that spikes occupy plus refractory periods
+    total_duration_needed = (num_spikes * spike_duration_ms) + ((num_spikes - 1) * refractory_period);
+    % Calculating the available time for intervals between spikes
+    available_time = simulation_duration - total_duration_needed;
+    % Adjust num_spikes if not enough time
+    while available_time < 0 && num_spikes > 2
+        num_spikes = num_spikes - 1;
+        total_duration_needed = (num_spikes * spike_duration_ms) + ((num_spikes - 1) * refractory_period);
+        available_time = simulation_duration - total_duration_needed;
+    end
+    
+    % Calculating evenly distributed intervals between spikes
+    interval_between_spikes = available_time / (num_spikes - 1) + refractory_period;
+    % Generating spike times starting with a random offset to stagger spikes between neurons
+    random_offset = rand() * refractory_period; % Stagger start within one refractory period
+    spike_times = cumsum([random_offset, repmat(spike_duration_ms + interval_between_spikes, 1, num_spikes - 1)]);
+    neuron_spike_times{i} = spike_times;
+end
+
+
+%making sure none of the spike trails are overlapping
+figure; hold on; 
+scatter(neuron_spike_times{1}, ones(size(neuron_spike_times{1})), 'filled', 'DisplayName', 'Neuron 1', 'SizeData', 10);
+scatter(neuron_spike_times{2}, ones(size(neuron_spike_times{2})), 'filled', 'DisplayName', 'Neuron 2', 'SizeData', 10);
+scatter(neuron_spike_times{3}, ones(size(neuron_spike_times{3})), 'filled', 'DisplayName', 'Neuron 3', 'SizeData', 10);
+scatter(neuron_spike_times{4}, ones(size(neuron_spike_times{4})), 'filled', 'DisplayName', 'Neuron 4', 'SizeData', 10);
+scatter(neuron_spike_times{5}, ones(size(neuron_spike_times{5})), 'filled', 'DisplayName', 'Neuron 5', 'SizeData', 10);
+scatter(neuron_spike_times{6}, ones(size(neuron_spike_times{6})), 'filled', 'DisplayName', 'Neuron 6', 'SizeData', 10);
+scatter(neuron_spike_times{7}, ones(size(neuron_spike_times{7})), 'filled', 'DisplayName', 'Neuron 7', 'SizeData', 10);
+scatter(neuron_spike_times{8}, ones(size(neuron_spike_times{8})), 'filled', 'DisplayName', 'Neuron 8', 'SizeData', 10);
+scatter(neuron_spike_times{9}, ones(size(neuron_spike_times{9})), 'filled', 'DisplayName', 'Neuron 9', 'SizeData', 10);
+scatter(neuron_spike_times{10}, ones(size(neuron_spike_times{10})), 'filled', 'DisplayName', 'Neuron 10', 'SizeData', 10);
+hold off;
+xlabel('Time (s)');
+ylabel('Spike');
+title(sprintf('Spiking Pattern for 10 Neurons %d'));
+xlim([0 1]);
+%%dropped spikes times
+neurons_droppped=neurons;
+neurons_drop = find(~neurons_keep);
+neurons_droppped(:,:,neurons_drop) = [];
+neuron_dropped_times=neuron_spike_times;
+neuron_dropped_times(neurons_drop) = [];
+
+%%%ques3
+sigma=3.33*10^-7;%um     0.3333S/m
+Voltage_neuron1=sum((currents./(4*3.14*sigma.*distances(1,:)')),1);
+Voltage_neuron2=sum((currents./(4*3.14*sigma.*distances(2,:)')),1);
+Voltage_neuron3=sum((currents./(4*3.14*sigma.*distances(3,:)')),1);
+Voltage_neuron4=sum((currents./(4*3.14*sigma.*distances(4,:)')),1);
+Voltage_neuron5=sum((currents./(4*3.14*sigma.*distances(5,:)')),1);
+Voltage_neuron6=sum((currents./(4*3.14*sigma.*distances(6,:)')),1);
+Voltage_neuron7=sum((currents./(4*3.14*sigma.*distances(7,:)')),1);
+Voltage_neuron8=sum((currents./(4*3.14*sigma.*distances(8,:)')),1);
+Voltage_neuron9=sum((currents./(4*3.14*sigma.*distances(9,:)')),1);
+Voltage_neuron10=sum((currents./(4*3.14*sigma.*distances(10,:)')),1);
+voltage_contribution=[Voltage_neuron1;Voltage_neuron2;Voltage_neuron3;Voltage_neuron4;Voltage_neuron5;Voltage_neuron6;Voltage_neuron7;Voltage_neuron8;Voltage_neuron9;Voltage_neuron10];
+voltage_contribution_dropped=[Voltage_neuron2;Voltage_neuron4;Voltage_neuron6;Voltage_neuron7;Voltage_neuron8;Voltage_neuron9;Voltage_neuron10];
+
+%%combined signal
+simulation_duration = 1; % Simulation duration in seconds
+dt = 2.5e-5; 
+% Generate the time vector
+time_vector = 0:dt:simulation_duration-dt;
+combined_signal = zeros(1, length(time_vector));
+for i = 1:10 % For each of the 10 neurons
+    voltage_trace = voltage_contribution(i, :);
+    for spike_time = neuron_spike_times{i}
+        spike_index = round((spike_time / dt)) + 1;
+        % Determining the range of indices in combined_signal where the voltage trace will be added
+        start_idx = spike_index;
+        end_idx = min(spike_index + length(voltage_trace) - 1, length(combined_signal));
+        % Adjust the length of the voltage trace if it extends beyond the end of combined_signal
+        trace_length = end_idx - start_idx + 1;
+        combined_signal(start_idx:end_idx) = combined_signal(start_idx:end_idx) + voltage_trace(1:trace_length);
+    end
+end
+%%combined signal with dropped
+combined_signal_dropped = zeros(1, length(time_vector));
+for i = 1:7 % For each of the 10 neurons
+    voltage_trace = voltage_contribution_dropped(i, :);
+    for spike_time = neuron_dropped_times{i}
+        spike_index = round((spike_time / dt)) + 1;
+        % Determining the range of indices in combined_signal where the voltage trace will be added
+        start_idx = spike_index;
+        end_idx = min(spike_index + length(voltage_trace) - 1, length(combined_signal_dropped));
+        % Adjust the length of the voltage trace if it extends beyond the end of combined_signal
+        trace_length = end_idx - start_idx + 1;
+        combined_signal_dropped(start_idx:end_idx) = combined_signal_dropped(start_idx:end_idx) + voltage_trace(1:trace_length);
+    end
+end
+%%%%specifically focusing on the reduction of larger spikes 
+%due to the exclusion of neurons within 25um of the electrode
+figure;
+subplot(2, 1, 1);
+plot(time_vector, combined_signal);
+title('Original Combined Signal');
+xlabel('Time (s)');
+ylabel('Voltage');
+subplot(2, 1, 2); 
+plot(time_vector, combined_signal_dropped);
+title('Combined Signal After Dropping Neurons');
+xlabel('Time (s)');
+ylabel('Voltage');
+sgtitle('COMBINED SIGNAL');
+
+%%ques4
+%%adding noise to the combined signal
+numSamples = round(simulation_duration / dt);
+recordedNoise = randn(1, numSamples);
+rangeVext = max(combined_signal) - min(combined_signal);
+scaledNoise = recordedNoise * (0.1 * rangeVext) / std(recordedNoise);
+combined_signal_noise = combined_signal + scaledNoise;
+% Plot the combined signal with noise
+plot(time_vector,combined_signal_noise);
+xlabel('Time (s)');
+ylabel('Voltage');
+title('Combined Signal with Noise');
 
